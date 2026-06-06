@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stocker — AI Stock Simulation Dashboard (Demo)</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0f172a;
+      --surface:   #1e293b;
+      --border:    #334155;
+      --sky:       #0ea5e9;
+      --sky-dim:   rgba(14,165,233,0.15);
+      --green:     #22c55e;
+      --green-dim: rgba(34,197,94,0.15);
+      --amber:     #f59e0b;
+      --amber-dim: rgba(245,158,11,0.15);
+      --red:       #ef4444;
+      --red-dim:   rgba(239,68,68,0.15);
+      --slate-300: #cbd5e1;
+      --slate-400: #94a3b8;
+      --slate-500: #64748b;
+      --white:     #f8fafc;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--white);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      min-height: 100vh;
+    }
+
+    /* ── Nav ── */
+    nav {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      gap: 32px;
+      height: 56px;
+    }
+    .logo { font-weight: 700; font-size: 1.2rem; color: var(--sky); letter-spacing: -0.5px; }
+    .logo span { color: var(--white); }
+    .tabs { display: flex; gap: 4px; }
+    .tab {
+      padding: 6px 16px;
+      border-radius: 8px;
+      font-size: 0.85rem;
+      font-weight: 500;
+      cursor: pointer;
+      color: var(--slate-400);
+      border: none;
+      background: none;
+      transition: all 0.15s;
+    }
+    .tab:hover { color: var(--white); background: rgba(255,255,255,0.05); }
+    .tab.active { background: var(--sky-dim); color: var(--sky); }
+    .demo-badge {
+      margin-left: auto;
+      background: var(--amber-dim);
+      color: var(--amber);
+      font-size: 0.7rem;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 99px;
+      border: 1px solid rgba(245,158,11,0.3);
+      letter-spacing: 0.5px;
+    }
+
+    /* ── Layout ── */
+    .page { display: none; padding: 32px 24px; max-width: 1100px; margin: 0 auto; }
+    .page.active { display: block; }
+    h1 { font-size: 1.8rem; font-weight: 700; margin-bottom: 6px; }
+    .subtitle { color: var(--slate-400); font-size: 0.85rem; margin-bottom: 24px; }
+
+    /* ── Sector pills ── */
+    .sector-row { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 24px; }
+    .pill {
+      padding: 5px 12px;
+      border-radius: 8px;
+      font-size: 0.75rem;
+      font-weight: 500;
+      border: 1px solid var(--border);
+      color: var(--slate-400);
+      cursor: pointer;
+      background: none;
+    }
+    .pill.active { border-color: rgba(14,165,233,0.4); background: var(--sky-dim); color: var(--sky); }
+
+    /* ── Run button ── */
+    .run-btn {
+      display: inline-flex; align-items: center; gap: 8px;
+      background: var(--sky); color: #fff; font-weight: 600;
+      padding: 10px 24px; border-radius: 10px; border: none;
+      font-size: 0.9rem; cursor: default; margin-bottom: 32px;
+    }
+
+    /* ── Progress bar ── */
+    .progress-wrap { margin-bottom: 32px; }
+    .progress-meta { display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--slate-400); margin-bottom: 6px; }
+    .progress-track { height: 6px; background: var(--border); border-radius: 99px; overflow: hidden; }
+    .progress-fill { height: 100%; background: var(--sky); border-radius: 99px; }
+
+    /* ── Stock cards ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+    .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; }
+    .ticker-block {}
+    .ticker { font-size: 1.3rem; font-weight: 700; }
+    .company { color: var(--slate-400); font-size: 0.8rem; margin-top: 2px; }
+    .sector-tag {
+      font-size: 0.7rem; font-weight: 600;
+      background: rgba(99,102,241,0.15); color: #a5b4fc;
+      padding: 3px 10px; border-radius: 99px;
+      border: 1px solid rgba(99,102,241,0.3);
+    }
+    .rank-badge {
+      background: var(--sky-dim); color: var(--sky);
+      font-size: 0.7rem; font-weight: 700;
+      padding: 4px 10px; border-radius: 99px;
+      border: 1px solid rgba(14,165,233,0.3);
+    }
+    .price-row { display: flex; align-items: baseline; gap: 12px; margin-bottom: 16px; }
+    .price { font-size: 1.5rem; font-weight: 700; }
+    .rounds-badge {
+      font-size: 0.75rem; color: var(--slate-400);
+      background: rgba(255,255,255,0.04); padding: 3px 10px;
+      border-radius: 99px; border: 1px solid var(--border);
+    }
+
+    /* ── Score bands ── */
+    .score-bands { display: flex; gap: 10px; margin-bottom: 16px; }
+    .band {
+      flex: 1; background: rgba(255,255,255,0.03);
+      border: 1px solid var(--border); border-radius: 10px;
+      padding: 10px; text-align: center;
+    }
+    .band-label { font-size: 0.65rem; color: var(--slate-500); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px; }
+    .band-val { font-size: 1.1rem; font-weight: 700; }
+
+    /* ── Fundamental badges ── */
+    .fund-row { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 16px; }
+    .fund-badge {
+      font-size: 0.7rem; font-weight: 600; padding: 4px 10px;
+      border-radius: 99px; border: 1px solid;
+    }
+    .fund-badge.pass { background: var(--green-dim); color: var(--green); border-color: rgba(34,197,94,0.3); }
+    .fund-badge.warn { background: var(--amber-dim); color: var(--amber); border-color: rgba(245,158,11,0.3); }
+
+    /* ── Technical bars ── */
+    .tech-bars { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 16px; }
+    .bar-row {}
+    .bar-meta { display: flex; justify-content: space-between; font-size: 0.72rem; color: var(--slate-400); margin-bottom: 4px; }
+    .bar-track { height: 5px; background: var(--border); border-radius: 99px; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 99px; }
+
+    /* ── AI reasoning ── */
+    .ai-box {
+      background: rgba(14,165,233,0.06);
+      border: 1px solid rgba(14,165,233,0.2);
+      border-radius: 10px; padding: 14px;
+    }
+    .ai-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .ai-label { font-size: 0.7rem; font-weight: 700; color: var(--sky); letter-spacing: 0.5px; text-transform: uppercase; }
+    .conf-badge {
+      font-size: 0.65rem; font-weight: 700; padding: 2px 8px;
+      border-radius: 99px; border: 1px solid;
+    }
+    .conf-high { background: var(--green-dim); color: var(--green); border-color: rgba(34,197,94,0.3); }
+    .conf-medium { background: var(--amber-dim); color: var(--amber); border-color: rgba(245,158,11,0.3); }
+    .ai-text { font-size: 0.82rem; color: var(--slate-300); line-height: 1.55; }
+    .risk-row { margin-top: 8px; font-size: 0.75rem; color: var(--slate-400); }
+    .risk-row strong { color: var(--amber); }
+
+    /* ── Track button ── */
+    .track-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      background: none; border: 1px solid var(--sky);
+      color: var(--sky); padding: 7px 18px; border-radius: 8px;
+      font-size: 0.8rem; font-weight: 600; cursor: default;
+      margin-top: 12px;
+    }
+
+    /* ── Pipeline (How It Works) ── */
+    .pipeline { display: flex; align-items: center; gap: 0; margin-bottom: 40px; overflow-x: auto; padding-bottom: 8px; }
+    .pipeline-step {
+      flex-shrink: 0; background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 14px 16px; min-width: 140px; text-align: center;
+    }
+    .pipeline-step .num { font-size: 1.4rem; font-weight: 800; color: var(--sky); }
+    .pipeline-step .label { font-size: 0.75rem; font-weight: 600; margin-top: 4px; }
+    .pipeline-step .desc { font-size: 0.65rem; color: var(--slate-500); margin-top: 3px; }
+    .pipeline-arrow { flex-shrink: 0; color: var(--slate-500); font-size: 1.2rem; padding: 0 8px; }
+
+    /* ── Indicator cards ── */
+    .signal-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 16px; margin-bottom: 32px; }
+    .ind-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 12px; padding: 18px;
+    }
+    .ind-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+    .ind-name { font-size: 0.95rem; font-weight: 700; }
+    .ind-weight { font-size: 0.7rem; color: var(--sky); background: var(--sky-dim); padding: 3px 10px; border-radius: 99px; }
+    .ind-pitch { font-size: 0.8rem; color: var(--slate-400); margin-bottom: 12px; line-height: 1.5; }
+    .ind-rule { font-size: 0.75rem; color: var(--green); background: var(--green-dim); padding: 6px 10px; border-radius: 8px; margin-bottom: 10px; }
+    .ind-links { display: flex; gap: 8px; flex-wrap: wrap; }
+    .ind-link {
+      font-size: 0.7rem; color: var(--sky); text-decoration: none;
+      background: var(--sky-dim); padding: 3px 10px; border-radius: 99px;
+      border: 1px solid rgba(14,165,233,0.2);
+    }
+    .ind-link:hover { background: rgba(14,165,233,0.25); }
+
+    /* ── Mini chart ── */
+    .mini-chart { height: 60px; position: relative; margin: 10px 0; }
+    .mini-chart svg { width: 100%; height: 100%; }
+
+    /* ── Portfolio ── */
+    .portfolio-table { width: 100%; border-collapse: collapse; }
+    .portfolio-table th {
+      text-align: left; font-size: 0.72rem; text-transform: uppercase;
+      letter-spacing: 0.5px; color: var(--slate-500); padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+    .portfolio-table td { padding: 12px; border-bottom: 1px solid rgba(51,65,85,0.4); font-size: 0.85rem; }
+    .portfolio-table tr:last-child td { border-bottom: none; }
+    .pct-pos { color: var(--green); font-weight: 600; }
+    .pct-neg { color: var(--red); font-weight: 600; }
+    .sparkline { display: inline-flex; align-items: flex-end; gap: 2px; height: 24px; }
+    .spark-bar { width: 3px; border-radius: 2px; }
+
+    /* ── FIRE ── */
+    .fire-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 24px; }
+    .fire-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 18px; }
+    .fire-label { font-size: 0.72rem; color: var(--slate-500); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; }
+    .fire-value { font-size: 1.6rem; font-weight: 700; }
+    .fire-sub { font-size: 0.78rem; color: var(--slate-400); margin-top: 4px; }
+
+    /* ── Footer ── */
+    footer {
+      text-align: center; padding: 32px;
+      color: var(--slate-500); font-size: 0.8rem;
+      border-top: 1px solid var(--border); margin-top: 48px;
+    }
+    footer a { color: var(--sky); text-decoration: none; }
+    footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+
+<!-- Nav -->
+<nav>
+  <div class="logo">📈 <span>Stocker</span></div>
+  <div class="tabs">
+    <button class="tab active" onclick="showPage('simulation',this)">🔮 Simulation</button>
+    <button class="tab" onclick="showPage('portfolio',this)">📁 Portfolio</button>
+    <button class="tab" onclick="showPage('fire',this)">🔥 FIRE Numbers</button>
+    <button class="tab" onclick="showPage('insights',this)">🔬 How It Works</button>
+  </div>
+  <div class="demo-badge">DEMO PREVIEW</div>
+</nav>
+
+<!-- ══════════════════════════════════════════════════════════
+     SIMULATION TAB
+════════════════════════════════════════════════════════════ -->
+<div id="simulation" class="page active">
+  <h1>Stock Simulation Engine</h1>
+  <p class="subtitle">100-round Monte Carlo simulation using 5 technical signals + Graham/Buffett/Lynch fundamental screening. Pick a sector or run across all 275 stocks.</p>
+
+  <!-- Sector picker -->
+  <div class="sector-row">
+    <button class="pill active">📊 All Sectors</button>
+    <button class="pill">💻 Technology</button>
+    <button class="pill">☁️ Software & Cloud</button>
+    <button class="pill">💊 Healthcare & Pharma</button>
+    <button class="pill">🏥 Medical Devices</button>
+    <button class="pill">🏦 Banks & Financials</button>
+    <button class="pill">🛡️ Insurance & Asset Mgmt</button>
+    <button class="pill">🛢️ Energy & Oil</button>
+    <button class="pill">🛍️ Consumer Discretionary</button>
+    <button class="pill">🧴 Consumer Staples</button>
+    <button class="pill">⚙️ Industrials</button>
+    <button class="pill">📡 Communication & Media</button>
+    <button class="pill">🏢 Real Estate</button>
+    <button class="pill">🌱 Clean Energy</button>
+    <button class="pill">🪙 Crypto & Fintech</button>
+  </div>
+
+  <!-- Run button -->
+  <div>
+    <div class="run-btn">▶ Run 100 Simulations — All Sectors</div>
+    <span style="color:var(--green);font-size:0.85rem;font-weight:600;margin-left:16px;">✓ Complete — All Sectors</span>
+  </div>
+
+  <!-- Progress (shown as complete) -->
+  <div class="progress-wrap" style="margin-top:16px;">
+    <div class="progress-meta"><span>Rounds: 100 / 100</span><span>100%</span></div>
+    <div class="progress-track"><div class="progress-fill" style="width:100%;"></div></div>
+  </div>
+
+  <!-- ── Stock Card 1: NVDA ── -->
+  <div class="card">
+    <div class="card-header">
+      <div class="ticker-block">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div class="ticker">NVDA</div>
+          <div class="rank-badge">#1</div>
+          <div class="sector-tag">💻 Technology</div>
+        </div>
+        <div class="company">NVIDIA Corporation</div>
+      </div>
+    </div>
+
+    <div class="price-row">
+      <div class="price">$875.40</div>
+      <div class="rounds-badge">🔄 94 / 100 rounds</div>
+    </div>
+
+    <!-- Score bands -->
+    <div class="score-bands">
+      <div class="band"><div class="band-label">Technical</div><div class="band-val" style="color:var(--sky);">8.4</div></div>
+      <div class="band"><div class="band-label">Fundamental</div><div class="band-val" style="color:var(--green);">6.1</div></div>
+      <div class="band"><div class="band-label">Blended</div><div class="band-val" style="color:var(--white);">7.5</div></div>
+      <div class="band"><div class="band-label">Rounds Top</div><div class="band-val" style="color:var(--amber);">94</div></div>
+    </div>
+
+    <!-- Fundamental badges -->
+    <div class="fund-row">
+      <span class="fund-badge warn">P/E 52.1 ▲ (threshold ≤15)</span>
+      <span class="fund-badge warn">P/B 24.3 ▲</span>
+      <span class="fund-badge pass">ROE 91% ✓</span>
+      <span class="fund-badge pass">Margin 55% ✓</span>
+      <span class="fund-badge pass">D/E 0.42 ✓</span>
+      <span class="fund-badge pass">PEG 0.72 ✓</span>
+    </div>
+
+    <!-- Technical bars -->
+    <div class="tech-bars">
+      <div class="bar-row">
+        <div class="bar-meta"><span>MACD (25%)</span><span style="color:var(--green)">8.7</span></div>
+        <div class="bar-track"><div class="bar-fill" style="width:87%;background:var(--green);"></div></div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-meta"><span>RSI (20%)</span><span style="color:var(--sky)">7.2</span></div>
+        <div class="bar-track"><div class="bar-fill" style="width:72%;background:var(--sky);"></div></div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-meta"><span>Volume (20%)</span><span style="color:var(--green)">9.1</span></div>
+        <div class="bar-track"><div class="bar-fill" style="width:91%;background:var(--green);"></div></div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-meta"><span>MA Cross (20%)</span><span style="color:var(--green)">8.5</span></div>
+        <div class="bar-track"><div class="bar-fill" style="width:85%;background:var(--green);"></div></div>
+      </div>
+      <div class="bar-row">
+        <div class="bar-meta"><span>Bollinger (15%)</span><span style="color:var(--amber)">6.3</span></div>
+        <div class="bar-track"><div class="bar-fill" style="width:63%;background:var(--amber);"></div></div>
+      </div>
+    </div>
+
+    <!-- AI box -->
+    <div class="ai-box">
+      <div class="ai-header">
+        <span class="ai-label">✦ Gemini AI Analysis</span>
+        <span class="conf-badge conf-high">HIGH CONFIDENCE</span>
+      </div>
+      <p class="ai-text">NVIDIA is in a dominant technical position with exceptional MACD momentum and a rare volume surge confirming institutional accumulation. ROE of 91% far exceeds Buffett's 15% threshold, and the PEG ratio of 0.72 signals Lynch-style growth at a reasonable price. The elevated P/E and P/B ratios reflect AI-driven growth expectations rather than value mispricing. Strong buy signal: data center demand and AI chip monopoly provide durable competitive moats.</p>
+      <div class="risk-row"><strong>Risk:</strong> Valuation stretched at P/E 52 — any earnings miss or AI capex slowdown could trigger a sharp correction. Concentration risk in data center segment (~80% revenue).</div>
+    </div>
+    <button class="track-btn">+ Track in Portfolio</button>
+  </div>
+
+  <!-- ── Stock Card 2: MSFT ── -->
+  <div class="card">
+    <div class="card-header">
+      <div class="ticker-block">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div class="ticker">MSFT</div>
+          <div class="rank-badge">#2</div>
+          <div class="sector-tag">☁️ Software & Cloud</div>
+        </div>
+        <div class="company">Microsoft Corporation</div>
+      </div>
+    </div>
+    <div class="price-row">
+      <div class="price">$432.10</div>
+      <div class="rounds-badge">🔄 89 / 100 rounds</div>
+    </div>
+    <div class="score-bands">
+      <div class="band"><div class="band-label">Technical</div><div class="band-val" style="color:var(--sky);">7.9</div></div>
+      <div class="band"><div class="band-label">Fundamental</div><div class="band-val" style="color:var(--green);">7.3</div></div>
+      <div class="band"><div class="band-label">Blended</div><div class="band-val" style="color:var(--white);">7.6</div></div>
+      <div class="band"><div class="band-label">Rounds Top</div><div class="band-val" style="color:var(--amber);">89</div></div>
+    </div>
+    <div class="fund-row">
+      <span class="fund-badge warn">P/E 38.2 ▲</span>
+      <span class="fund-badge warn">P/B 14.1 ▲</span>
+      <span class="fund-badge pass">ROE 36% ✓</span>
+      <span class="fund-badge pass">Margin 35% ✓</span>
+      <span class="fund-badge pass">D/E 0.31 ✓</span>
+      <span class="fund-badge pass">PEG 0.89 ✓</span>
+    </div>
+    <div class="ai-box">
+      <div class="ai-header">
+        <span class="ai-label">✦ Gemini AI Analysis</span>
+        <span class="conf-badge conf-high">HIGH CONFIDENCE</span>
+      </div>
+      <p class="ai-text">Microsoft shows exceptional fundamental quality with 36% ROE and 35% profit margins that would satisfy Buffett's checklist. Azure cloud growth (29% YoY) combined with Copilot AI monetization creates two distinct earnings tailwinds. The 10/20 EMA crossover confirms sustained uptrend since Q4 2024. Lynch PEG of 0.89 indicates the stock is underpriced relative to its growth rate — a rare quality for a $3T company.</p>
+      <div class="risk-row"><strong>Risk:</strong> Enterprise IT spending slowdown could dampen Azure growth. Regulatory scrutiny of AI and cloud dominance is increasing in EU and US.</div>
+    </div>
+    <button class="track-btn">+ Track in Portfolio</button>
+  </div>
+
+  <div style="text-align:center;color:var(--slate-500);font-size:0.85rem;padding:16px 0;">
+    + 8 more results (sign in to the live app to see all 10 ranked stocks)
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     PORTFOLIO TAB
+════════════════════════════════════════════════════════════ -->
+<div id="portfolio" class="page">
+  <h1>My Portfolio</h1>
+  <p class="subtitle">Stocks you're tracking — live price, today's change, and performance since you added them.</p>
+
+  <div class="card" style="padding:0;overflow:hidden;">
+    <table class="portfolio-table">
+      <thead>
+        <tr>
+          <th>Ticker</th>
+          <th>Company</th>
+          <th>Price at Track</th>
+          <th>Current</th>
+          <th>Today</th>
+          <th>Since Tracked</th>
+          <th>7-Day</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>NVDA</strong></td>
+          <td style="color:var(--slate-400);">NVIDIA Corp.</td>
+          <td>$810.20</td>
+          <td><strong>$875.40</strong></td>
+          <td class="pct-pos">+2.3%</td>
+          <td class="pct-pos">+8.0%</td>
+          <td><div class="sparkline">
+            <div class="spark-bar" style="height:40%;background:var(--green);"></div>
+            <div class="spark-bar" style="height:55%;background:var(--green);"></div>
+            <div class="spark-bar" style="height:45%;background:var(--green);"></div>
+            <div class="spark-bar" style="height:70%;background:var(--green);"></div>
+            <div class="spark-bar" style="height:60%;background:var(--green);"></div>
+            <div class="spark-bar" style="height:80%;background:var(--green);"></div>
+            <div class="spark-bar" style="height:100%;background:var(--green);"></div>
+          </div></td>
+        </tr>
+        <tr>
+          <td><strong>MSFT</strong></td>
+          <td style="color:var(--slate-400);">Microsoft Corp.</td>
+          <td>$415.00</td>
+          <td><strong>$432.10</strong></td>
+          <td class="pct-pos">+0.8%</td>
+          <td class="pct-pos">+4.1%</td>
+          <td><div class="sparkline">
+            <div class="spark-bar" style="height:60%;background:var(--green);"></div>
+            <div class="spark-bar" style="height:65%;background:var(--green);"></div>
+            <div class="spark-bar" style="height:55%;background:var(--green);"></div>
+            <div class="spark-bar" style="height:70%;background:var(--green);"></div>
+            <div class="spark-bar" style="height:80%;background:var(--green);"></div>
+            <div class="spark-bar" style="height:90%;background:var(--green);"></div>
+            <div class="spark-bar" style="height:100%;background:var(--green);"></div>
+          </div></td>
+        </tr>
+        <tr>
+          <td><strong>AMZN</strong></td>
+          <td style="color:var(--slate-400);">Amazon.com Inc.</td>
+          <td>$198.50</td>
+          <td><strong>$192.30</strong></td>
+          <td class="pct-neg">-1.2%</td>
+          <td class="pct-neg">-3.1%</td>
+          <td><div class="sparkline">
+            <div class="spark-bar" style="height:100%;background:var(--red);"></div>
+            <div class="spark-bar" style="height:85%;background:var(--red);"></div>
+            <div class="spark-bar" style="height:70%;background:var(--red);"></div>
+            <div class="spark-bar" style="height:60%;background:var(--red);"></div>
+            <div class="spark-bar" style="height:50%;background:var(--red);"></div>
+            <div class="spark-bar" style="height:45%;background:var(--red);"></div>
+            <div class="spark-bar" style="height:40%;background:var(--red);"></div>
+          </div></td>
+        </tr>
+        <tr>
+          <td><strong>LLY</strong></td>
+          <td style="color:var(--slate-400);">Eli Lilly & Co.</td>
+          <td>$820.00</td>
+          <td><strong>$891.60</strong></td>
+          <td class="pct-pos">+1.6%</td>
+          <td class="pct-pos">+8.7%</td>
+          <td><div class="sparkline">
+            <div class="spark-bar" style="height:50%;background:var(--green);"></div>
+            <div class="spark-bar" style="height:55%;background:var(--green);"></div>
+            <div class="spark-bar" style="height:65%;background:var(--green);"></div>
+            <div class="spark-bar" style="height:75%;background:var(--green);"></div>
+            <div class="spark-bar" style="height:85%;background:var(--green);"></div>
+            <div class="spark-bar" style="height:90%;background:var(--green);"></div>
+            <div class="spark-bar" style="height:100%;background:var(--green);"></div>
+          </div></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     FIRE NUMBERS TAB
+════════════════════════════════════════════════════════════ -->
+<div id="fire" class="page">
+  <h1>FIRE Numbers</h1>
+  <p class="subtitle">Financial Independence, Retire Early — year-by-year projection with Roth IRA, 401k, and safe withdrawal.</p>
+
+  <div class="fire-grid">
+    <div class="fire-card">
+      <div class="fire-label">FIRE Number (25× Rule)</div>
+      <div class="fire-value" style="color:var(--sky);">$2,500,000</div>
+      <div class="fire-sub">Based on $100,000 annual expenses</div>
+    </div>
+    <div class="fire-card">
+      <div class="fire-label">Years to FIRE</div>
+      <div class="fire-value" style="color:var(--green);">12 years</div>
+      <div class="fire-sub">Target retirement age: 47</div>
+    </div>
+    <div class="fire-card">
+      <div class="fire-label">Projected Portfolio at Retirement</div>
+      <div class="fire-value" style="color:var(--white);">$2,841,200</div>
+      <div class="fire-sub">Portfolio + Roth + 401k combined</div>
+    </div>
+    <div class="fire-card">
+      <div class="fire-label">Monthly Income in Retirement</div>
+      <div class="fire-value" style="color:var(--amber);">$9,470</div>
+      <div class="fire-sub">4% safe withdrawal rate (SWR)</div>
+    </div>
+  </div>
+
+  <!-- Simple bar chart representation -->
+  <div class="card">
+    <div style="font-size:0.85rem;font-weight:600;margin-bottom:16px;">Year-by-Year Portfolio Growth</div>
+    <div style="display:flex;align-items:flex-end;gap:6px;height:120px;padding-bottom:4px;">
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;">
+        <div style="width:100%;border-radius:4px 4px 0 0;background:var(--sky);" data-h="15"></div>
+        <span style="font-size:0.6rem;color:var(--slate-500);">35</span>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;">
+        <div style="width:100%;border-radius:4px 4px 0 0;background:var(--sky);" data-h="22"></div>
+        <span style="font-size:0.6rem;color:var(--slate-500);">36</span>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;">
+        <div style="width:100%;border-radius:4px 4px 0 0;background:var(--sky);" data-h="30"></div>
+        <span style="font-size:0.6rem;color:var(--slate-500);">37</span>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;">
+        <div style="width:100%;border-radius:4px 4px 0 0;background:var(--sky);" data-h="39"></div>
+        <span style="font-size:0.6rem;color:var(--slate-500);">38</span>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;">
+        <div style="width:100%;border-radius:4px 4px 0 0;background:var(--sky);" data-h="49"></div>
+        <span style="font-size:0.6rem;color:var(--slate-500);">39</span>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;">
+        <div style="width:100%;border-radius:4px 4px 0 0;background:var(--sky);" data-h="59"></div>
+        <span style="font-size:0.6rem;color:var(--slate-500);">40</span>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;">
+        <div style="width:100%;border-radius:4px 4px 0 0;background:var(--sky);" data-h="70"></div>
+        <span style="font-size:0.6rem;color:var(--slate-500);">41</span>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;">
+        <div style="width:100%;border-radius:4px 4px 0 0;background:var(--sky);" data-h="80"></div>
+        <span style="font-size:0.6rem;color:var(--slate-500);">42</span>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;">
+        <div style="width:100%;border-radius:4px 4px 0 0;background:var(--sky);" data-h="88"></div>
+        <span style="font-size:0.6rem;color:var(--slate-500);">43</span>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;">
+        <div style="width:100%;border-radius:4px 4px 0 0;background:var(--sky);" data-h="93"></div>
+        <span style="font-size:0.6rem;color:var(--slate-500);">44</span>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;">
+        <div style="width:100%;border-radius:4px 4px 0 0;background:var(--sky);" data-h="96"></div>
+        <span style="font-size:0.6rem;color:var(--slate-500);">45</span>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;">
+        <div style="width:100%;border-radius:4px 4px 0 0;background:var(--sky);" data-h="98"></div>
+        <span style="font-size:0.6rem;color:var(--slate-500);">46</span>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;">
+        <div style="width:100%;border-radius:4px 4px 0 0;background:var(--green);" data-h="100"></div>
+        <span style="font-size:0.6rem;color:var(--green);font-weight:700;">47 🎯</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════
+     HOW IT WORKS TAB
+════════════════════════════════════════════════════════════ -->
+<div id="insights" class="page">
+  <h1>How It Works</h1>
+  <p class="subtitle">The full 8-stage simulation pipeline explained — from raw price data to Gemini AI reasoning.</p>
+
+  <!-- Pipeline -->
+  <div class="pipeline">
+    <div class="pipeline-step">
+      <div class="num">1</div>
+      <div class="label">Data Fetch</div>
+      <div class="desc">yfinance pulls 60d of OHLCV price data</div>
+    </div>
+    <div class="pipeline-arrow">→</div>
+    <div class="pipeline-step">
+      <div class="num">2</div>
+      <div class="label">5-Signal Scoring</div>
+      <div class="desc">MACD · RSI · Volume · MA · Bollinger</div>
+    </div>
+    <div class="pipeline-arrow">→</div>
+    <div class="pipeline-step">
+      <div class="num">3</div>
+      <div class="label">100 MC Rounds</div>
+      <div class="desc">Gaussian noise σ=2.5 per round, top 20 each</div>
+    </div>
+    <div class="pipeline-arrow">→</div>
+    <div class="pipeline-step">
+      <div class="num">4</div>
+      <div class="label">Aggregate</div>
+      <div class="desc">Count how often each stock wins top 20</div>
+    </div>
+    <div class="pipeline-arrow">→</div>
+    <div class="pipeline-step">
+      <div class="num">5</div>
+      <div class="label">Fundamentals</div>
+      <div class="desc">Graham / Buffett / Lynch ratios for top 20</div>
+    </div>
+    <div class="pipeline-arrow">→</div>
+    <div class="pipeline-step">
+      <div class="num">6</div>
+      <div class="label">Blend 60/40</div>
+      <div class="desc">60% technical + 40% fundamental</div>
+    </div>
+    <div class="pipeline-arrow">→</div>
+    <div class="pipeline-step">
+      <div class="num">7</div>
+      <div class="label">Top 10</div>
+      <div class="desc">Re-rank by blended score</div>
+    </div>
+    <div class="pipeline-arrow">→</div>
+    <div class="pipeline-step" style="border-color:rgba(14,165,233,0.4);background:var(--sky-dim);">
+      <div class="num" style="color:var(--white);">8</div>
+      <div class="label">Gemini AI</div>
+      <div class="desc">Reasoning · Confidence · Risk</div>
+    </div>
+  </div>
+
+  <!-- Technical signals -->
+  <div style="font-size:0.8rem;font-weight:700;color:var(--slate-500);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:12px;">Technical Signals</div>
+  <div class="signal-grid">
+
+    <div class="ind-card">
+      <div class="ind-header">
+        <div class="ind-name">📉 MACD</div>
+        <div class="ind-weight">25% weight</div>
+      </div>
+      <div class="ind-pitch">Moving Average Convergence Divergence measures trend momentum by comparing two EMAs. A bullish crossover (MACD line above signal line) is a buy signal.</div>
+      <!-- Mini chart: MACD bars -->
+      <div class="mini-chart">
+        <svg viewBox="0 0 200 60" xmlns="http://www.w3.org/2000/svg">
+          <line x1="0" y1="30" x2="200" y2="30" stroke="#334155" stroke-width="1"/>
+          <rect x="10" y="35" width="8" height="10" fill="#ef4444" opacity="0.7"/>
+          <rect x="22" y="33" width="8" height="12" fill="#ef4444" opacity="0.7"/>
+          <rect x="34" y="38" width="8" height="7" fill="#ef4444" opacity="0.7"/>
+          <rect x="46" y="41" width="8" height="4" fill="#ef4444" opacity="0.5"/>
+          <rect x="58" y="26" width="8" height="4" fill="#22c55e" opacity="0.6"/>
+          <rect x="70" y="20" width="8" height="10" fill="#22c55e" opacity="0.8"/>
+          <rect x="82" y="14" width="8" height="16" fill="#22c55e" opacity="0.9"/>
+          <rect x="94" y="10" width="8" height="20" fill="#22c55e"/>
+          <rect x="106" y="8" width="8" height="22" fill="#22c55e"/>
+          <rect x="118" y="12" width="8" height="18" fill="#22c55e"/>
+          <polyline points="10,40 22,38 34,35 46,31 58,26 70,22 82,18 94,15 106,12 118,14" stroke="#0ea5e9" stroke-width="1.5" fill="none"/>
+        </svg>
+      </div>
+      <div class="ind-rule">✓ Score 10 if MACD &gt; signal &amp; histogram positive; 0 if bearish crossover</div>
+      <div class="ind-links">
+        <a class="ind-link" href="https://www.investopedia.com/terms/m/macd.asp" target="_blank">Investopedia</a>
+        <a class="ind-link" href="https://school.stockcharts.com/doku.php?id=technical_indicators:moving_average_convergence_divergence_macd" target="_blank">StockCharts</a>
+      </div>
+    </div>
+
+    <div class="ind-card">
+      <div class="ind-header">
+        <div class="ind-name">📊 RSI</div>
+        <div class="ind-weight">20% weight</div>
+      </div>
+      <div class="ind-pitch">Relative Strength Index (0–100) measures whether a stock is overbought (&gt;70) or oversold (&lt;30). The sweet spot for a buy is RSI between 40–60 with upward momentum.</div>
+      <div class="mini-chart">
+        <svg viewBox="0 0 200 60" xmlns="http://www.w3.org/2000/svg">
+          <line x1="0" y1="12" x2="200" y2="12" stroke="#ef4444" stroke-width="1" stroke-dasharray="4,3" opacity="0.5"/>
+          <line x1="0" y1="42" x2="200" y2="42" stroke="#22c55e" stroke-width="1" stroke-dasharray="4,3" opacity="0.5"/>
+          <text x="2" y="10" font-size="7" fill="#ef444488">70</text>
+          <text x="2" y="56" font-size="7" fill="#22c55e88">30</text>
+          <polyline points="10,8 30,6 50,10 70,40 90,45 110,38 130,28 150,22 170,20 190,18" stroke="#0ea5e9" stroke-width="2" fill="none"/>
+        </svg>
+      </div>
+      <div class="ind-rule">✓ Score 8 if 40 ≤ RSI ≤ 65 (momentum without excess); penalize &gt;75</div>
+      <div class="ind-links">
+        <a class="ind-link" href="https://www.investopedia.com/terms/r/rsi.asp" target="_blank">Investopedia</a>
+        <a class="ind-link" href="https://www.rayner.com/rsi-indicator-trading/" target="_blank">Rayner Teo</a>
+      </div>
+    </div>
+
+    <div class="ind-card">
+      <div class="ind-header">
+        <div class="ind-name">📦 Volume Surge</div>
+        <div class="ind-weight">20% weight</div>
+      </div>
+      <div class="ind-pitch">High volume on up days confirms institutional buying. A price move on 1.5× average volume is far more reliable than a low-volume move.</div>
+      <div class="mini-chart">
+        <svg viewBox="0 0 200 60" xmlns="http://www.w3.org/2000/svg">
+          <line x1="0" y1="40" x2="200" y2="40" stroke="#f59e0b" stroke-width="1" stroke-dasharray="4,3" opacity="0.5"/>
+          <text x="2" y="38" font-size="7" fill="#f59e0b88">1.5× avg</text>
+          <rect x="10" y="48" width="8" height="8" fill="#334155"/>
+          <rect x="22" y="45" width="8" height="11" fill="#334155"/>
+          <rect x="34" y="42" width="8" height="14" fill="#334155"/>
+          <rect x="46" y="30" width="8" height="26" fill="#22c55e" opacity="0.8"/>
+          <rect x="58" y="35" width="8" height="21" fill="#22c55e" opacity="0.7"/>
+          <rect x="70" y="20" width="8" height="36" fill="#22c55e"/>
+          <rect x="82" y="43" width="8" height="13" fill="#334155"/>
+          <rect x="94" y="46" width="8" height="10" fill="#334155"/>
+        </svg>
+      </div>
+      <div class="ind-rule">✓ Score proportional to recent avg volume / 90-day avg volume ratio</div>
+      <div class="ind-links">
+        <a class="ind-link" href="https://www.investopedia.com/terms/v/volumeoftrade.asp" target="_blank">Investopedia</a>
+      </div>
+    </div>
+
+    <div class="ind-card">
+      <div class="ind-header">
+        <div class="ind-name">📈 MA Crossover</div>
+        <div class="ind-weight">20% weight</div>
+      </div>
+      <div class="ind-pitch">When the 10-day EMA crosses above the 20-day EMA, it signals a short-term uptrend. A recent crossover (within 5 days) scores highest.</div>
+      <div class="mini-chart">
+        <svg viewBox="0 0 200 60" xmlns="http://www.w3.org/2000/svg">
+          <polyline points="10,50 30,46 50,40 70,34 90,26 110,20 130,16 150,14 170,12 190,10" stroke="#0ea5e9" stroke-width="2" fill="none"/>
+          <polyline points="10,52 30,50 50,48 70,44 90,38 110,30 130,24 150,20 170,17 190,15" stroke="#f59e0b" stroke-width="1.5" fill="none" stroke-dasharray="4,2"/>
+          <circle cx="90" cy="32" r="4" fill="none" stroke="#22c55e" stroke-width="1.5"/>
+          <text x="93" y="29" font-size="7" fill="#22c55e">cross!</text>
+        </svg>
+      </div>
+      <div class="ind-rule">✓ Score 10 if 10 EMA &gt; 20 EMA &amp; crossed within 5 days; 7 if just bullish</div>
+      <div class="ind-links">
+        <a class="ind-link" href="https://www.investopedia.com/terms/e/ema.asp" target="_blank">Investopedia</a>
+        <a class="ind-link" href="https://www.schwab.com/learn/story/3-moving-average-strategies" target="_blank">Schwab</a>
+      </div>
+    </div>
+
+    <div class="ind-card">
+      <div class="ind-header">
+        <div class="ind-name">🎯 Bollinger Bands</div>
+        <div class="ind-weight">15% weight</div>
+      </div>
+      <div class="ind-pitch">Price + 2σ band. When price bounces off the lower band and RSI is not overbought, it's a mean-reversion buy. Middle band = 20-day SMA.</div>
+      <div class="mini-chart">
+        <svg viewBox="0 0 200 60" xmlns="http://www.w3.org/2000/svg">
+          <polyline points="10,15 50,12 90,14 130,16 170,13 200,15" stroke="#334155" stroke-width="1" fill="none" stroke-dasharray="3,2"/>
+          <polyline points="10,30 50,28 90,30 130,32 170,29 200,30" stroke="#0ea5e9" stroke-width="1.5" fill="none"/>
+          <polyline points="10,45 50,44 90,46 130,48 170,45 200,45" stroke="#334155" stroke-width="1" fill="none" stroke-dasharray="3,2"/>
+          <polyline points="10,42 30,44 50,46 70,40 90,28 110,22 130,25 150,28 170,24" stroke="#f59e0b" stroke-width="2" fill="none"/>
+          <circle cx="50" cy="46" r="3" fill="#22c55e"/>
+          <text x="53" y="44" font-size="7" fill="#22c55e">bounce</text>
+        </svg>
+      </div>
+      <div class="ind-rule">✓ Score 10 near lower band (oversold bounce); 5 near middle; 2 near upper</div>
+      <div class="ind-links">
+        <a class="ind-link" href="https://www.investopedia.com/terms/b/bollingerbands.asp" target="_blank">Investopedia</a>
+      </div>
+    </div>
+  </div>
+
+  <!-- Investor frameworks -->
+  <div style="font-size:0.8rem;font-weight:700;color:var(--slate-500);text-transform:uppercase;letter-spacing:0.5px;margin:24px 0 12px;">Investor Frameworks</div>
+  <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:16px;">
+
+    <div class="card" style="border-color:rgba(99,102,241,0.3);background:rgba(99,102,241,0.06);">
+      <div style="font-size:1rem;font-weight:700;margin-bottom:6px;">📚 Benjamin Graham</div>
+      <div style="font-size:0.78rem;color:var(--slate-400);margin-bottom:12px;">"Buy at a significant discount to intrinsic value." — The Intelligent Investor</div>
+      <div style="font-size:0.75rem;display:flex;flex-direction:column;gap:6px;">
+        <div>✓ P/E ratio ≤ 15 (cheap earnings)</div>
+        <div>✓ P/B ratio ≤ 1.5 (assets worth buying)</div>
+        <div style="color:var(--slate-500);font-size:0.7rem;">Father of value investing; mentored Warren Buffett</div>
+      </div>
+      <div style="margin-top:12px;"><a class="ind-link" href="https://www.investopedia.com/articles/fundamental-analysis/09/graham-mcap.asp" target="_blank">Graham on Investopedia</a></div>
+    </div>
+
+    <div class="card" style="border-color:rgba(34,197,94,0.3);background:rgba(34,197,94,0.06);">
+      <div style="font-size:1rem;font-weight:700;margin-bottom:6px;">🪙 Warren Buffett</div>
+      <div style="font-size:0.78rem;color:var(--slate-400);margin-bottom:12px;">"Buy wonderful companies at fair prices." — Berkshire Hathaway</div>
+      <div style="font-size:0.75rem;display:flex;flex-direction:column;gap:6px;">
+        <div>✓ Return on Equity ≥ 15% (management quality)</div>
+        <div>✓ Profit Margin ≥ 10% (economic moat)</div>
+        <div>✓ Debt/Equity ≤ 0.5 (financial safety)</div>
+      </div>
+      <div style="margin-top:12px;"><a class="ind-link" href="https://www.investopedia.com/articles/01/071801.asp" target="_blank">Buffett Strategy</a></div>
+    </div>
+
+    <div class="card" style="border-color:rgba(245,158,11,0.3);background:rgba(245,158,11,0.06);">
+      <div style="font-size:1rem;font-weight:700;margin-bottom:6px;">📈 Peter Lynch</div>
+      <div style="font-size:0.78rem;color:var(--slate-400);margin-bottom:12px;">"Invest in what you know." — One Up on Wall Street</div>
+      <div style="font-size:0.75rem;display:flex;flex-direction:column;gap:6px;">
+        <div>✓ PEG ratio ≤ 1.0 (growth at a reasonable price)</div>
+        <div style="font-size:0.7rem;color:var(--slate-500);">PEG = P/E ÷ Earnings Growth Rate</div>
+        <div style="color:var(--slate-500);font-size:0.7rem;">Lynch ran Fidelity Magellan Fund at 29.2% annual return</div>
+      </div>
+      <div style="margin-top:12px;"><a class="ind-link" href="https://www.investopedia.com/terms/p/pegratio.asp" target="_blank">PEG Ratio</a></div>
+    </div>
+  </div>
+</div>
+
+<!-- Footer -->
+<footer>
+  <div style="margin-bottom:8px;">
+    Built by <a href="mailto:pradeepvarathanpugalenthi@gmail.com">Pradeep Varathan</a> ·
+    <a href="https://github.com/pradeepvarathan/stocker" target="_blank">GitHub</a> ·
+    <a href="../README.md">README</a>
+  </div>
+  <div>Stocker uses free-tier APIs only — yfinance for market data, Gemini for AI reasoning. No paid subscriptions required.</div>
+</footer>
+
+<script>
+  function showPage(id, btn) {
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.getElementById(id).classList.add('active');
+    btn.classList.add('active');
+  }
+
+  // Animate FIRE chart bars on load
+  document.querySelectorAll('[data-h]').forEach(el => {
+    const h = parseInt(el.dataset.h);
+    el.style.height = (h * 1.0) + 'px';
+    el.style.transition = 'height 0.8s ease';
+  });
+</script>
+</body>
+</html>
