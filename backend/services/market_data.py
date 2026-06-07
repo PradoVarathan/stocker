@@ -7,8 +7,8 @@ _cache: dict[str, tuple[float, pd.DataFrame]] = {}
 CACHE_TTL = 900  # 15 minutes
 
 
-def fetch_stock_data(ticker: str, period_days: int = 60) -> Optional[pd.DataFrame]:
-    cache_key = f"{ticker}_{period_days}"
+def fetch_stock_data(ticker: str, period_days: int = 60, end_date: str = None) -> Optional[pd.DataFrame]:
+    cache_key = f"{ticker}_{period_days}_{end_date or 'live'}"
     now = time.time()
 
     if cache_key in _cache:
@@ -17,8 +17,14 @@ def fetch_stock_data(ticker: str, period_days: int = 60) -> Optional[pd.DataFram
             return cached_df
 
     try:
-        period = f"{period_days}d"
-        df = yf.download(ticker, period=period, progress=False, auto_adjust=True)
+        if end_date:
+            from datetime import datetime, timedelta
+            end_dt = datetime.strptime(end_date, "%Y-%m-%d")
+            start_dt = end_dt - timedelta(days=period_days + 14)  # buffer for weekends/holidays
+            df = yf.download(ticker, start=start_dt.strftime("%Y-%m-%d"), end=end_date, progress=False, auto_adjust=True)
+        else:
+            period = f"{period_days}d"
+            df = yf.download(ticker, period=period, progress=False, auto_adjust=True)
         if df is None or len(df) < 20:
             return None
         # Flatten MultiIndex before lowercasing (yfinance 1.x returns MultiIndex for single tickers)

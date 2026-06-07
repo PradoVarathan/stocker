@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from database import init_db
-from routers import simulation, portfolio, fire
+from routers import simulation, portfolio, fire, evaluate
 
 app = FastAPI(title="Stocker API", version="1.0.0")
 
@@ -20,6 +20,7 @@ app.add_middleware(
 app.include_router(simulation.router, prefix="/api/simulate", tags=["simulation"])
 app.include_router(portfolio.router, prefix="/api/portfolio", tags=["portfolio"])
 app.include_router(fire.router, prefix="/api/fire", tags=["fire"])
+app.include_router(evaluate.router)
 
 
 @app.on_event("startup")

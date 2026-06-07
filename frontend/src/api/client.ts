@@ -38,3 +38,17 @@ export const fireApi = {
   calculate: (data: FireRequest) =>
     api.post<FireResponse>("/fire/calculate", data),
 };
+
+export const evaluateApi = {
+  run: (backtest_date: string, sector?: string, rounds = 100) =>
+    api.post<{ job_id: string; backtest_date: string }>("/evaluate/run", {
+      backtest_date,
+      sector: sector || null,
+      rounds,
+    }),
+
+  getResults: (jobId: string) =>
+    api.get<{ status: string; results: import("../types").BacktestResults | null }>(
+      `/evaluate/results/${jobId}`
+    ),
+};

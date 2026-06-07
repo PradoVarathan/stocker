@@ -71,6 +71,51 @@ export interface FireRequest {
   k401_current_balance: number;
 }
 
+export interface BacktestPick {
+  predicted_rank: number;
+  ticker: string;
+  company_name: string;
+  sector: string | null;
+  blended_score: number;
+  avg_composite_score: number;
+  fundamental_score: number;
+  times_in_top_picks: number;
+  price_on_date: number;
+  price_now: number;
+  actual_return_pct: number;
+  was_correct: boolean;
+  beat_spy: boolean;
+  pe_ratio: number | null;
+  pb_ratio: number | null;
+  roe: number | null;
+  profit_margin: number | null;
+  debt_equity: number | null;
+  peg_ratio: number | null;
+  rsi_score: number;
+  macd_score: number;
+  volume_score: number;
+  bollinger_score: number;
+  ma_score: number;
+}
+
+export interface BacktestResults {
+  job_id: string;
+  backtest_date: string;
+  evaluated_on: string;
+  sector: string | null;
+  spy_return_pct: number;
+  accuracy: number;
+  avg_return_pct: number;
+  alpha_pct: number;
+  picks: BacktestPick[];
+}
+
+export interface BacktestProgress {
+  status: string;
+  step: string;
+  pct: number;
+}
+
 export interface YearRow {
   age: number;
   portfolio: number;
