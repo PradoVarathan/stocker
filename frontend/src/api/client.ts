@@ -39,6 +39,18 @@ export const fireApi = {
     api.post<FireResponse>("/fire/calculate", data),
 };
 
+export const optimizerApi = {
+  run: (start_year: number, end_year: number, intervals: string[], n_rounds = 10) =>
+    api.post<{ job_id: string; start_year: number; end_year: number }>("/optimizer/run", {
+      start_year, end_year, intervals, n_rounds,
+    }),
+
+  getResults: (jobId: string) =>
+    api.get<{ status: string; results: import("../types").OptimizerResults | null }>(
+      `/optimizer/results/${jobId}`
+    ),
+};
+
 export const evaluateApi = {
   run: (backtest_date: string, sector?: string, rounds = 100) =>
     api.post<{ job_id: string; backtest_date: string }>("/evaluate/run", {

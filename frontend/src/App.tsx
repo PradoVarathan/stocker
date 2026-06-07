@@ -4,15 +4,17 @@ import { PortfolioTab } from "./components/portfolio/PortfolioTab";
 import { FireTab } from "./components/fire/FireTab";
 import { InsightsTab } from "./components/insights/InsightsTab";
 import { EvaluateTab } from "./components/evaluate/EvaluateTab";
+import { OptimizerTab } from "./components/evaluate/OptimizerTab";
 
-type Tab = "simulation" | "portfolio" | "fire" | "insights" | "evaluate";
+type Tab = "simulation" | "portfolio" | "fire" | "insights" | "evaluate" | "optimizer";
 
 const tabs: { id: Tab; label: string; icon: string }[] = [
-  { id: "simulation", label: "Simulation", icon: "📈" },
-  { id: "portfolio", label: "My Portfolio", icon: "💼" },
-  { id: "fire", label: "FIRE Numbers", icon: "🔥" },
-  { id: "insights", label: "How It Works", icon: "🔬" },
-  { id: "evaluate", label: "Evaluate", icon: "🎯" },
+  { id: "simulation", label: "Simulation",  icon: "📈" },
+  { id: "portfolio",  label: "My Portfolio", icon: "💼" },
+  { id: "fire",       label: "FIRE Numbers", icon: "🔥" },
+  { id: "insights",   label: "How It Works", icon: "🔬" },
+  { id: "evaluate",   label: "Evaluate",     icon: "🎯" },
+  { id: "optimizer",  label: "Optimizer",    icon: "🧪" },
 ];
 
 export default function App() {
@@ -51,7 +53,8 @@ export default function App() {
         {active === "portfolio" && <PortfolioTab />}
         {active === "fire" && <FireTab />}
         {active === "insights" && <InsightsTab />}
-        {active === "evaluate" && <EvaluateTab />}
+        {active === "evaluate"  && <EvaluateTab />}
+        {active === "optimizer" && <OptimizerTab />}
       </main>
     </div>
   );

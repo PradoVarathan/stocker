@@ -71,6 +71,51 @@ export interface FireRequest {
   k401_current_balance: number;
 }
 
+// ── Optimizer ───────────────────────────────────────────────────────────────
+
+export interface IntervalYearPoint {
+  year: number;
+  portfolio: number;
+  spy: number;
+}
+
+export interface IntervalResult {
+  key: string;
+  label: string;
+  interval_days: number;
+  windows_tested: number;
+  avg_return_pct: number;
+  avg_spy_return_pct: number;
+  avg_alpha_pct: number;
+  avg_accuracy_pct: number;
+  annualized_return_pct: number;
+  spy_annualized_pct: number;
+  alpha_annualized_pct: number;
+  std_dev: number;
+  sharpe: number;
+  portfolio_final: number;
+  spy_final: number;
+  yearly: IntervalYearPoint[];
+}
+
+export interface OptimizerResults {
+  job_id: string;
+  start_year: number;
+  end_year: number;
+  tickers_used: number;
+  best_interval: string | null;
+  intervals: IntervalResult[];
+}
+
+export interface OptimizerProgress {
+  status: string;
+  stage: string;
+  pct: number;
+  detail?: string;
+}
+
+// ── Backtest ─────────────────────────────────────────────────────────────────
+
 export interface BacktestPick {
   predicted_rank: number;
   ticker: string;
